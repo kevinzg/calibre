@@ -149,10 +149,28 @@ class HTMLOutput(OutputFormatPlugin):
                 t = t.encode('utf-8')
             f.write(t)
 
+        # Write metadata
         metadata_path = os.path.join(tempdir, 'metadata.json')
         with open(metadata_path, mode='wt') as f:
             import json
             json.dump(list(iter(meta)), f)
+
+        # Write cover
+        cover_path = None
+        try:
+            cover_data = None
+            if oeb_book.metadata.cover:
+                term = oeb_book.metadata.cover[0].term
+                cover_data = oeb_book.guide[term].item.data
+            if cover_data:
+                from calibre.utils.img import save_cover_data_to
+                cover_path = os.path.join(tempdir, 'cover.jpg')
+                with lopen(cover_path, 'w') as cf:
+                    cf.write('')
+                save_cover_data_to(cover_data, cover_path)
+        except:
+            import traceback
+            traceback.print_exc()
 
         with CurrentDir(output_dir):
             for item in oeb_book.manifest:
