@@ -17,10 +17,10 @@ def relpath(*args):
     return _relpath(*args).replace(os.sep, '/')
 
 
-def rename_extension_xhtml_to_html(href):
+def rename_extension_to_html(href):
     if href.startswith('https://') or href.startswith('http://'):
         return href
-    return re.sub(r'\.xhtml(#.*)?$', '.html\g<1>', href)
+    return re.sub(r'\.x(?:ht)?ml(#.*)?$', '.html\g<1>', href)
 
 class HTMLOutput(OutputFormatPlugin):
 
@@ -68,7 +68,7 @@ class HTMLOutput(OutputFormatPlugin):
                     href = relpath(abspath(unquote(node.href)), dirname(ref_url))
                     if isinstance(href, bytes):
                         href = href.decode('utf-8')
-                    href = rename_extension_xhtml_to_html(href)
+                    href = rename_extension_to_html(href)
                     link = element(point, 'a', href=clean_xml_chars(href))
                     title = node.title
                     if isinstance(title, bytes):
@@ -182,7 +182,7 @@ class HTMLOutput(OutputFormatPlugin):
                 for link in links:
                     if 'href' in link.attrib:
                         href = link.attrib['href']
-                        link.attrib['href'] = rename_extension_xhtml_to_html(href)
+                        link.attrib['href'] = rename_extension_to_html(href)
 
                 # get & clean HTML <BODY>-data
                 body = root.xpath('//h:body', namespaces={'h': 'http://www.w3.org/1999/xhtml'})[0]
@@ -193,7 +193,7 @@ class HTMLOutput(OutputFormatPlugin):
                 # generate link to next page
                 if item.spine_position+1 < len(oeb_book.spine):
                     nextLink = oeb_book.spine[item.spine_position+1].href
-                    nextLink = rename_extension_xhtml_to_html(nextLink)
+                    nextLink = rename_extension_to_html(nextLink)
                     nextLink = relpath(abspath(nextLink), dir)
                 else:
                     nextLink = None
@@ -201,14 +201,14 @@ class HTMLOutput(OutputFormatPlugin):
                 # generate link to previous page
                 if item.spine_position > 0:
                     prevLink = oeb_book.spine[item.spine_position-1].href
-                    prevLink = rename_extension_xhtml_to_html(prevLink)
+                    prevLink = rename_extension_to_html(prevLink)
                     prevLink = relpath(abspath(prevLink), dir)
                 else:
                     prevLink = None
 
                 cssLink = relpath(abspath(css_path), dir)
                 tocUrl = relpath(output_file, dir)
-                firstContentPageLink = rename_extension_xhtml_to_html(oeb_book.spine[0].href)
+                firstContentPageLink = rename_extension_to_html(oeb_book.spine[0].href)
 
                 # render template
                 templite = Templite(template_html_data)
@@ -221,9 +221,12 @@ class HTMLOutput(OutputFormatPlugin):
                         firstContentPageLink=firstContentPageLink)
 
                 # write html to file
-                with open(rename_extension_xhtml_to_html(path), 'wb') as f:
+                with open(rename_extension_to_html(path), 'wb') as f:
                     f.write(t.encode('utf-8'))
                 item.unload_data_from_memory(memory=path)
+
+                # Remove the original file
+                os.remove(path)
 
         # Remove '.htmldir' from the output path
         assert output_path.endswith('.' + self.file_type)
