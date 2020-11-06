@@ -28,22 +28,21 @@ ${head_content}$
 </div>
 
 <div class="calibreMain">
+  ${if prevLink or nextLink:}$
+    <div class="calibreEbNavTop">
+      ${if prevLink:}$
+        <a href="${prevLink}$" class="calibreAPrev">${print(_('previous page'))}$</a>
+      ${:else:}$
+        <a href="${tocUrl}$" class="calibreAPrev">${print(_('previous page'))}$</a>
+      ${:endif}$
+
+      ${if nextLink:}$
+        <a href="${nextLink}$" class="calibreANext">${print(_('next page'))}$</a>
+      ${:endif}$
+    </div>
+  ${:endif}$
 
   <div class="calibreEbookContent">
-    ${if prevLink or nextLink:}$
-      <div class="calibreEbNavTop">
-        ${if prevLink:}$
-          <a href="${prevLink}$" class="calibreAPrev">${print(_('previous page'))}$</a>
-        ${:else:}$
-          <a href="${tocUrl}$" class="calibreAPrev">${print(_('previous page'))}$</a>
-        ${:endif}$
-
-        ${if nextLink:}$
-          <a href="${nextLink}$" class="calibreANext">${print(_('next page'))}$</a>
-        ${:endif}$
-      </div>
-    ${:endif}$
-
     ${ebookContent}$
   </div>
 
