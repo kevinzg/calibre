@@ -124,8 +124,11 @@ class HTMLOutput(OutputFormatPlugin):
         meta = EasyMeta(oeb_book.metadata)
 
         tempdir = os.path.realpath(PersistentTemporaryDirectory())
-        output_dir = tempdir
+        output_dir = os.path.join(tempdir, 'data')
         output_file = os.path.join(tempdir, 'index.html')
+
+        if not exists(output_dir):
+            os.makedirs(output_dir)
 
         css_path = output_dir+os.sep+'calibreHtmlOutBasicCss.css'
         with open(css_path, 'wb') as f:
@@ -146,7 +149,7 @@ class HTMLOutput(OutputFormatPlugin):
                 t = t.encode('utf-8')
             f.write(t)
 
-        metadata_path = os.path.join(output_dir, 'metadata.json')
+        metadata_path = os.path.join(tempdir, 'metadata.json')
         with open(metadata_path, mode='wt') as f:
             import json
             json.dump(list(iter(meta)), f)
@@ -235,9 +238,9 @@ class HTMLOutput(OutputFormatPlugin):
 
         os.makedirs(output_path, exist_ok=True)
 
-        for file in os.listdir(output_dir):
+        for file in os.listdir(tempdir):
             shutil.move(
-                os.path.join(output_dir, file),
+                os.path.join(tempdir, file),
                 output_path,
             )
 
