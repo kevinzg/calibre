@@ -17,12 +17,17 @@ def relpath(*args):
     return _relpath(*args).replace(os.sep, '/')
 
 
+def rename_extension_xhtml_to_html(href):
+    if href.startswith('https://') or href.startswith('http://'):
+        return href
+    return re.sub(r'\.xhtml(#.*)?$', '.html\g<1>', href)
+
 class HTMLOutput(OutputFormatPlugin):
 
     name = 'HTML Output'
     author = 'Fabian Grassl'
-    file_type = 'zip'
-    commit_name = 'html_output'
+    file_type = 'htmldir'
+    commit_name = 'htmldir_output'
 
     options = {
         OptionRecommendation(name='template_css',
@@ -63,6 +68,7 @@ class HTMLOutput(OutputFormatPlugin):
                     href = relpath(abspath(unquote(node.href)), dirname(ref_url))
                     if isinstance(href, bytes):
                         href = href.decode('utf-8')
+                    href = rename_extension_xhtml_to_html(href)
                     link = element(point, 'a', href=clean_xml_chars(href))
                     title = node.title
                     if isinstance(title, bytes):
@@ -118,12 +124,8 @@ class HTMLOutput(OutputFormatPlugin):
         meta = EasyMeta(oeb_book.metadata)
 
         tempdir = os.path.realpath(PersistentTemporaryDirectory())
-        output_file = os.path.join(tempdir,
-                basename(re.sub(r'\.zip', '', output_path)+'.html'))
-        output_dir = re.sub(r'\.html', '', output_file)+'_files'
-
-        if not exists(output_dir):
-            os.makedirs(output_dir)
+        output_dir = tempdir
+        output_file = os.path.join(tempdir, 'index.html')
 
         css_path = output_dir+os.sep+'calibreHtmlOutBasicCss.css'
         with open(css_path, 'wb') as f:
@@ -143,6 +145,11 @@ class HTMLOutput(OutputFormatPlugin):
             if isinstance(t, unicode_type):
                 t = t.encode('utf-8')
             f.write(t)
+
+        metadata_path = os.path.join(output_dir, 'metadata.json')
+        with open(metadata_path, mode='wt') as f:
+            import json
+            json.dump(list(iter(meta)), f)
 
         with CurrentDir(output_dir):
             for item in oeb_book.manifest:
@@ -170,6 +177,13 @@ class HTMLOutput(OutputFormatPlugin):
                 head_content = re.sub(re.compile(r'\<style.*\/style\>', re.M|re.S), '', head_content)
                 head_content = re.sub(r'<(title)([^>]*)/>', r'<\1\2></\1>', head_content)
 
+                # Rename internal links ending with .xhtml to just .html
+                links = root.xpath('//h:a', namespaces={'h': 'http://www.w3.org/1999/xhtml'})
+                for link in links:
+                    if 'href' in link.attrib:
+                        href = link.attrib['href']
+                        link.attrib['href'] = rename_extension_xhtml_to_html(href)
+
                 # get & clean HTML <BODY>-data
                 body = root.xpath('//h:body', namespaces={'h': 'http://www.w3.org/1999/xhtml'})[0]
                 ebook_content = etree.tostring(body, pretty_print=True, encoding='unicode')
@@ -179,6 +193,7 @@ class HTMLOutput(OutputFormatPlugin):
                 # generate link to next page
                 if item.spine_position+1 < len(oeb_book.spine):
                     nextLink = oeb_book.spine[item.spine_position+1].href
+                    nextLink = rename_extension_xhtml_to_html(nextLink)
                     nextLink = relpath(abspath(nextLink), dir)
                 else:
                     nextLink = None
@@ -186,41 +201,42 @@ class HTMLOutput(OutputFormatPlugin):
                 # generate link to previous page
                 if item.spine_position > 0:
                     prevLink = oeb_book.spine[item.spine_position-1].href
+                    prevLink = rename_extension_xhtml_to_html(prevLink)
                     prevLink = relpath(abspath(prevLink), dir)
                 else:
                     prevLink = None
 
                 cssLink = relpath(abspath(css_path), dir)
                 tocUrl = relpath(output_file, dir)
-                firstContentPageLink = oeb_book.spine[0].href
+                firstContentPageLink = rename_extension_xhtml_to_html(oeb_book.spine[0].href)
 
                 # render template
                 templite = Templite(template_html_data)
                 toc = lambda: self.generate_html_toc(oeb_book, path, output_dir)
                 t = templite.render(ebookContent=ebook_content,
                         prevLink=prevLink, nextLink=nextLink,
-                        has_toc=bool(oeb_book.toc.count()), toc=toc,
+                        has_toc=False, toc=toc,
                         tocUrl=tocUrl, head_content=head_content,
                         meta=meta, cssLink=cssLink,
                         firstContentPageLink=firstContentPageLink)
 
                 # write html to file
-                with open(path, 'wb') as f:
+                with open(rename_extension_xhtml_to_html(path), 'wb') as f:
                     f.write(t.encode('utf-8'))
                 item.unload_data_from_memory(memory=path)
 
-        zfile = zipfile.ZipFile(output_path, "w")
-        zfile.add_dir(output_dir, basename(output_dir))
-        zfile.write(output_file, basename(output_file), zipfile.ZIP_DEFLATED)
+        # Remove '.htmldir' from the output path
+        assert output_path.endswith('.' + self.file_type)
+        suffix_len = 1 + len(self.file_type)
+        output_path = output_path[:-suffix_len]
 
-        if opts.extract_to:
-            if os.path.exists(opts.extract_to):
-                shutil.rmtree(opts.extract_to)
-            os.makedirs(opts.extract_to)
-            zfile.extractall(opts.extract_to)
-            self.log('Zip file extracted to', opts.extract_to)
+        os.makedirs(output_path, exist_ok=True)
 
-        zfile.close()
+        for file in os.listdir(output_dir):
+            shutil.move(
+                os.path.join(output_dir, file),
+                output_path,
+            )
 
         # cleanup temp dir
         shutil.rmtree(tempdir)
