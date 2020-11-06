@@ -21,7 +21,7 @@ h1, h2, strong {
 }
 
 .calibreMeta {
-  background-color:#AAAAAA;
+  background-color:#EEE;
   padding: 5px;
 }
 
@@ -36,7 +36,7 @@ h1, h2, strong {
 
 .calibreEbNav, .calibreEbNavTop {
   clear: both;
-  background-color: #AAAAAA;
+  background-color: #EEE;
   padding: 10px;
   text-align: center;
 }
