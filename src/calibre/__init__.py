@@ -1,4 +1,5 @@
-
+import sys
+print('\033[32,1m~/d3v/calibre\033[0m', file=sys.stderr)
 ''' E-book management software'''
 __license__   = 'GPL v3'
 __copyright__ = '2008, Kovid Goyal <kovid@kovidgoyal.net>'
