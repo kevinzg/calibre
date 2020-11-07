@@ -242,12 +242,14 @@ class HTMLOutput(OutputFormatPlugin):
                         firstContentPageLink=firstContentPageLink)
 
                 # write html to file
-                with open(rename_extension_to_html(path), 'wb') as f:
+                new_path = rename_extension_to_html(path)
+                with open(new_path, 'wb') as f:
                     f.write(t.encode('utf-8'))
                 item.unload_data_from_memory(memory=path)
 
                 # Remove the original file
-                os.remove(path)
+                if new_path != path:
+                    os.remove(path)
 
         # Remove '.htmldir' from the output path
         assert output_path.endswith('.' + self.file_type)
